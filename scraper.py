@@ -16,6 +16,7 @@ import csv
 import random
 import json
 
+#koodin alku
 
 
 class User:
@@ -29,19 +30,6 @@ class User:
     def add_use(self):
         self.used+=1
 
-
-#ladataan käyttäjät        
-user_list_raw="user_list.csv"
-user_list=[]
-with open(user_list_raw) as users:
-    for user in users:
-        row = user.replace("\n", "")
-        data = row.split(";")
-        print(data)
-        if data[0]!="\ufeffusername":
-            user_list.append(User(data[0],data[1],data[2]))
-    users.close()
-
 def less_used_user():
     return_user=()
     user_use_count=100000
@@ -51,12 +39,10 @@ def less_used_user():
             return_user=user
     return return_user
 
-chosen_one=less_used_user()
 
-
-PATH = (r"C:\Users\ilpoa\epimetheus\drivers\chromedriver.exe")
-USER=chosen_one.user
-PASSWORD=chosen_one.password
+def scraper():
+    space = bs.find()
+    name = bs.find_all()
 
 
 #-----PROXY SETTING------
@@ -70,6 +56,30 @@ PROXY="185.20.71.38:443"
 target_company="kesko"
 
 #-----------------------
+
+#ladataan käyttäjät        
+user_list_raw="user_list.csv"
+user_list=[]
+with open(user_list_raw) as users:
+    for user in users:
+        row = user.replace("\n", "")
+        data = row.split(";")
+        print(data)
+        if data[0]!="\ufeffusername":
+            user_list.append(User(data[0],data[1],data[2]))
+    users.close()
+
+
+
+chosen_one=less_used_user()
+
+
+PATH = (r"C:\Users\ilpoa\epimetheus\drivers\chromedriver.exe")
+USER=chosen_one.user
+PASSWORD=chosen_one.password
+
+
+
 
 print(PATH)
 print("Chosen one: ")
@@ -105,6 +115,8 @@ stealth(driver,
 driver.get("https://bot.incolumitas.com/#botChallenge")
 time.sleep(3)
 
+
+
 #email=driver.find_element(By.ID,"username")
 #email.send_keys(USER)
 #password=driver.find_element(By.ID,"password")
@@ -113,8 +125,10 @@ time.sleep(3)
 #time.sleep(2+random.randint(0,3)) #jitter
 #password.send_keys(Keys.RETURN)
 
-time.sleep(30)
+time.sleep(20)
 quit()
+
+
 
 
 

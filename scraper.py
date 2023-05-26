@@ -39,35 +39,6 @@ def less_used_user():
             return_user=user
     return return_user
 
-
-
-
-#-----PROXY SETTING------
-
-PROXY="185.20.71.38:443"
-
-#------------------------
-
-#-------TARGET-----------
-
-target_company="kesko"
-
-#-----------------------
-
-#ladataan käyttäjät        
-user_list_raw="user_list.csv"
-user_list=[]
-with open(user_list_raw) as users:
-    for user in users:
-        row = user.replace("\n", "")
-        data = row.split(";")
-        print(data)
-        if data[0]!="\ufeffusername":
-            user_list.append(User(data[0],data[1],data[2]))
-    users.close()
-
-
-
 chosen_one=less_used_user()
 
 
@@ -114,34 +85,13 @@ time.sleep(3)
 
 #---------login------------
 
-email=driver.find_element(By.ID,"username")
+email=driver.find_element_by_id("username")
 email.send_keys(USER)
-password=driver.find_element(By.ID,"password")
+password=driver.find_element_by_id("password")
 password.send_keys(PASSWORD)
 chosen_one.add_use() #lisätään käyttö
-time.sleep(2+random.randint(0,3)) #jitter
+time.sleep(3+random.randint(0,5)) #jitter
 password.send_keys(Keys.RETURN)
-
-
-peoples = bs.find_all("div", {"class" :"artdeco-entity-lockup__content"})
-
-
-targets = []
-for human in peoples:
-    #name = 
-    #bio =
-    #link =
-
-
-
-
-
-
-
-
-time.sleep(20)
-quit()
-
 
 
 

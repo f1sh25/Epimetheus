@@ -135,42 +135,58 @@ def less_used_user():
 
 # SCRAPING functions
 
-def user_scraper():
-  chosen_one=less_used_user()
-  chosen_one.add_use()
-  email = chosen_one.user
-  password = chosen_one.password
-  #actions.login(driver, email, password) # if email and password isnt given, it'll prompt in terminal
-  #person_data = Person("https://www.linkedin.com/in/joey-sham-aa2a50122", driver=driver)
-  return person_data
 
-user_index=0
+
 def scraper_main():
+  global user_index
+
   proxy=proxy_final_check(next(proxy_gen))
 
   print(f"acting as: {proxy}")
 
-  options = uc.ChromeOptions()
+  #options = uc.ChromeOptions()
 
-  options.add_argument(f'--proxy-server={proxy}')
-  options.add_argument("start-maximized")
+  #options.add_argument(f'--proxy-server={proxy}')
+  #options.add_argument("start-maximized")
+
   print("starting driver:")
-  driver = uc.Chrome(options=options)
+
+  #driver = uc.Chrome(options=options)
+
   time.sleep(2)
-  driver.get("https://www.google.com/")
+
+  #chosen_one=less_used_user()
+  #chosen_one.add_use()
+  #email = chosen_one.user
+  #password = chosen_one.password
+
+  #driver.get("https://www.google.com/")
   profiles=users()
-
+  #actions.login(driver, email, password) # if email and password isnt given, it'll prompt in terminal
   for s in range((len(profiles)-user_index)):
+    user_name = profiles[user_index][0]
+    user_link = profiles[user_index][1]
+    print(user_index)
     if user_index%10==0:
-      proxy=proxy_final_check(next(proxy_gen)) 
-      driver.close()
-      time.sleep(3)
+      person_data = Person(user_link, driver=driver,close_on_complete=True, scrape=True)
+      time.sleep(180+random(0,180))
+      #time.sleep(3)
+      
+      user_index+=1
       scraper_main()
+    else:
+      
+      time.sleep(180+random(0,180))
 
-    user = profiles[user_index][0]
-    print(user)
-    user_index+=1
+      person_data = Person(user_link, driver=driver,close_on_complete=False,scrape=True)
+      #data_result.append({user_name:person_data})
+      writer.writerow({"name":person_data.name,"bio":person_data.about,"experiences":person_data.experiences,"educations":person_data.interests,"accomplishment":person_data.accomplishments,"company":person_data.company,"job_title":person_data.job_title})
+      user_index+=1
     
+
+
+  
+     
 
 
 
@@ -179,13 +195,15 @@ ua = UserAgent() # From here we generate a random user agent
 proxies = [] # Will contain proxies [ip, port]
 user_list_raw="user_list.csv"
 user_list=[]
-profile_data=[]
+user_index=0
+
+
 print("loading proxies")
 proxy_finder()
 proxy_finder_geonode()
 
-
 Thread(target=proxy_checker, daemon=True).start()
+
 working_ones=0
 print("finding proxies...")
 
@@ -193,12 +211,19 @@ time.sleep(10)
 
 proxy_gen = proxy_offerer()
 
-
-
 data_result=[]
 
+kohde="kesko"
+
+with open((f"{kohde}_user_data.csv"), "a") as log_file:
+  fieldnames=["name","bio","link","tier","department","student"]
+  writer = csv.DictWriter(log_file,delimiter=";",lineterminator="\n",quotechar='"',fieldnames=fieldnames)
+  writer.writeheader()
+   
+
+
 scraper_main()
-#proxy=next(proxy_gen)
+
 
 proxy=proxy_final_check(next(proxy_gen))
 

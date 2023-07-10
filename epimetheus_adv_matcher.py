@@ -18,6 +18,7 @@ class SchoolLinker:
 def school_match_finder(students:list):
     keyword_match_dictionary = {key: [] for key in weighter_keywords.education_keyword_ratings}
     
+
     for student in students:
         try:
             keyword_match_dictionary[student.education_keyword].append(student)
@@ -25,19 +26,17 @@ def school_match_finder(students:list):
             pass
 
 
-    for subject_key in keyword_match_dictionary:
-        target_list = keyword_match_dictionary[subject_key]
-        if len(target_list)>1:
-            print((subject_key,[person.name for person in target_list]))
-    
-
     #create dynamic study year dictionary
 
-    print("linkin nodes based on school history")
+    
     study_class = {key: [] for key in range(len(students))}
     
+   
+
+
     for student_a in students:
             study_class[student_a]=[]
+            
             for student_b in students:
                 if student_b.name == student_a.name:
                     pass
@@ -58,28 +57,77 @@ def school_match_finder(students:list):
             
 
     for key in study_class:
-        target_list = study_class[key]
-        if len(target_list)>1:
-            for person in target_list:
+        same_time = study_class[key]
+        
+        if len(same_time)>1 and key.unlinked_from_school==True:
+            for person in same_time:
                 if key.education_keyword == person.education_keyword:
                     
                     records, summary, keys = driver.execute_query("""
-                    MATCH (p:Person {name: $name}),(f:Person {name: $friend})
-                    MERGE (p)-[:studied_same_time_and_same_place {weight: 1.0}]->(f)
+                    MATCH (p:TMP {name: $name}),(f:TMP {name: $friend})
+                    MERGE (p)-[:studied_same_school_time_same_place {weight: 1, cost:1}]->(f)
                     """, name=key.name, friend=person.name,
                     database_="neo4j",
                     )
                 else:
+                    #print(f"{key.name} linked!")
                     records, summary, keys = driver.execute_query("""
-                    MATCH (p:Person {name: $name}),(f:Person {name: $friend})
-                    MERGE (p)-[:studied_same_time {weight: 0.5}]->(f)
+                    MATCH (p:TMP {name: $name}),(f:TMP {name: $friend})
+                    MERGE (p)-[:studied_school_same_time {weight: 0.75, cost:1/0.75}]->(f)
                     """, name=key.name, friend=person.name,
                     database_="neo4j",
                     )
+                key.unlinked_from_school=False                
+
+
+    for student_a in students:
+        for student_b in students:
+            if student_b.name == student_a.name or student_a.unlinked_from_school==False:
+                    pass
+            else:
+                #print(f"{student_a.name} linked!")
+                records, summary, keys = driver.execute_query("""
+                    MATCH (p:TMP {name: $name}),(f:TMP {name: $friend})
+                    MERGE (p)-[:studied_same_school {weight: 0.25, cost: 1/0.25}]->(f)
+                    """, name=student_a.name, friend=student_b.name,
+                    database_="neo4j",
+                    )
+        
+
                 
 
-def company_match_finder(student:list):
-    pass
+def company_match_finder(workers:list):
+    keyword_match_dictionary = {key: [] for key in weighter_keywords.department_keywords}
+    
+
+    for student in workers:
+        try:
+            keyword_match_dictionary[student.department].append(student)
+        except KeyError:
+            pass
+
+
+    #create dynamic study year dictionary
+
+    
+    company_class = {key: [] for key in range(len(workers))}          
+
+
+    for worker_a in workers:
+        for worker_b in workers:
+            if worker_b.name == worker_a.name or worker_a.unlinked_from_school==False:
+                    pass
+            else:
+                #print(f"{worker_a.name} linked!")
+                records, summary, keys = driver.execute_query("""
+                    MATCH (p:TMP {name: $name}),(f:TMP {name: $friend})
+                    MERGE (p)-[:worked_same_company {weight: 0.25, cost: 1/0.25}]->(f)
+                    """, name=worker_a.name, friend=worker_b.name,
+                    database_="neo4j",
+                    )
+        
+
+
 
 def school_buddies():
     print("find all school nodes")
@@ -91,13 +139,12 @@ def school_buddies():
     print("The query `{query}` returned {records_count} records in {time} ms.".format(
             query=summary.query, records_count=len(schools),
             time=summary.result_available_after))
-
+    print("find all persons connected to the school")
     for raw_school in schools:
-
-        print("find all persons connected to the school")       
+       
         school = raw_school.value()
         record, summary, keys = driver.execute_query(
-        "MATCH p=(n:Person)-[r:studied_in]->(:School {name: $name}) RETURN n",
+        "MATCH p=(n:TMP)-[r:studied_in]->(:School {name: $name}) RETURN n",
         database_="neo4j", name=school
         )
         #check if more then 1 connection
@@ -133,20 +180,24 @@ def company_buddies():
     print("The query `{query}` returned {records_count} records in {time} ms.".format(
             query=summary.query, records_count=len(companies),
             time=summary.result_available_after))
+    
+    
 
     for raw_company in companies:
 
         #find all persons connected to the school        
         company = raw_company.value()
         record, summary, keys = driver.execute_query(
-        "MATCH p=(n:Person)-[r:studied_in]->(:School {name: $name}) RETURN n",
+        "MATCH p=(n:TMP)-[r:Worked_at]->(:Company {name: $name}) RETURN n",
         database_="neo4j", name=company
         )
+        
         #check if more then 1 connection
         if len(record)==1:
             pass
         else:
             #print(company)
+            
             workers = []
             for person in record:
                 data = person.data()
@@ -161,11 +212,21 @@ def company_buddies():
                 weighter.StatusWeighter.status_finder(person_obj)
                 weighter.EducationWeigter.education_finder(person_obj)
                 workers.append(person_obj)
-
+                
             company_match_finder(workers)   
 
+def interest_buddies():
+    pass
 
+#interest buddies
+
+#colleagues
+
+#superior matcher
+
+#
 
         
 if __name__ == "__main__":
     school_buddies()
+    #company_buddies()

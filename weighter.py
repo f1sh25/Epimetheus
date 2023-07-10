@@ -18,8 +18,10 @@ class Target:
         self.education = ast.literal_eval(rivi[8])
         self.connections = rivi[9]
         self.interests = rivi[10]
+        self.id = ""
         self.department = ""
         self.department_value = 0
+        self.previous_experiences = {}
         self.status = ""
         self.status_value = 0
         self.education_level = ""
@@ -27,7 +29,7 @@ class Target:
         self.education_keyword = ""
         self.education_keyword_weight = 0
         self.education_year=0
-        self.asigned_to_study_class=False
+        self.unlinked_from_school=True
 
 
 def csv_reader():
@@ -41,6 +43,11 @@ def csv_reader():
                 data_list.append(henkilö)
 
 
+def db_reader():
+    pass
+
+#lukee neo4j:stä TMP käyttäjät ja lisää ne Datalistiin
+
 class CompanyDepartments:
 
     def department_finder(person:Target):
@@ -53,7 +60,40 @@ class CompanyDepartments:
                     person.department=keywords
                     person.department_value=department_values[keywords]
             
-    
+    def previous_department_finder(self,person:Target):
+        department_keywords = weighter_keywords.department_keywords
+        department_values = weighter_keywords.department_impact
+        company_status = weighter_keywords.employment_status_keywords
+        company_status_values = weighter_keywords.employment_status_importance
+
+        for job in person.experiences:
+            status=""
+            status_value = 0
+            for key in company_status:
+                for keyword in company_status[key]:
+                    if keyword.lower() in job[0].lower():
+                        status = key
+                        status_value = company_status_values[key] 
+
+            department=""
+            department_weight = 0
+            for key in department_keywords:
+                for keyword in department_keywords[key]:
+                    if keyword.lower() in job[0].lower():
+                        department=key
+                        department_weight = department_values[key]
+
+            experience = job[1]
+            if " · Full-time" in experience:
+                company= experience.replace(" · Full-time","")
+            elif " · Part-time" in experience:
+                company= experience.replace(" · Part-time","")
+            else:
+                company = experience
+            person.previous_experiences[company]=[department,department_weight+status_value]
+        #print(person.name + " : " + str(person.previous_experiences))
+
+
         
 
 class StatusWeighter:
@@ -96,6 +136,21 @@ class EducationWeigter:
                         person.education_level=education_level
                         person.education_level_weight = weighter_keywords.education_ratings[education_level]
 
+#find top rankin employees in latest company
+def high_value_person_finder(data:list):
+    unsorted_return_list = []
+    for person in data:
+        employment_history = person.previous_experiences
+        employment_weights = []
+        for company in employment_history:
+                employment_weights.append(employment_history[company][1])
+                break
+        try:
+            unsorted_return_list.append((person.name,max(employment_weights),person.id))
+        except ValueError:
+            unsorted_return_list.append((person.name,0, person.id))
+    return_list = sorted(unsorted_return_list, key=lambda weigth : weigth[1], reverse=True)
+    return return_list
 
 
 if __name__ == "__main__":
@@ -107,9 +162,9 @@ if __name__ == "__main__":
     status = StatusWeighter()
     education = EducationWeigter()
     for person in data_list:
-        status.status_finder(person)
-        education.education_finder(person)
+        #status.status_finder(person)
+        #education.education_finder(person)
+        dep.previous_department_finder(person)
 
-
-
-
+    print(high_value_person_finder(data_list)[:5])
+    

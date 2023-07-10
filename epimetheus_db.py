@@ -25,25 +25,26 @@ class Target:
         self.education = ast.literal_eval(rivi[8])
         self.connections = rivi[9]
         self.interests = rivi[10]
+        self.id = ""
 
 
 class Database_updater:
-    def input_users(self):
-        for user in data_list:
+    def input_users(self, person: Target):
+        
             summary = driver.execute_query(
             "MERGE (:Person {name: $name})",  
-            name=user.name,  
+            name=person.name,  
             database_="neo4j",  
             )
-    def delete_all_users(self):
-        for user in data_list:
+    def delete_all_users(self, person: Target):
+        
             records, summary, keys = driver.execute_query("""
             MATCH (p:Person {name: $name})
             DETACH DELETE p
-            """, name=user.name,
+            """, name=person.name,
             database_="neo4j",
             )
-        print(f"Query counters: {summary.counters}.")
+            print(f"Query counters: {summary.counters}.")
 
     def update_about(self,person:Target):
         records, summary, keys = driver.execute_query("""
@@ -137,7 +138,7 @@ class Database_updater:
     
     def update_all(self,person:Target):
         #try:
-            #self.input_users()
+            self.input_users(person)
             self.update_intro(person=person)
             self.update_accomplishments(person=person)
             self.update_about(person=person)
@@ -151,7 +152,103 @@ class Database_updater:
         #except:
             #pass
 
+class NodeBreeder:
+    def __init__(self):
+        self.cities=[]
+        self.provinces=[]
+        self.cities_provinces=[]
+    def location_filter(self):
+        for user in data_list:
+            location = user.location.split(",")
+            if len(location)==3 and location[0] not in self.cities:
+                if location[1] not in self.provinces:
+                    self.provinces.append(location[1])
+                self.cities.append(location[0])
+                self.cities_provinces.append((location[0],location[1]))
 
+
+    def location_creater(self):
+        for provice in self.provinces:
+                summary = driver.execute_query(
+                "MERGE (:Province {name: $name})",  
+                name=provice,  
+                database_="neo4j",  
+                ).summary
+            
+        for city in self.cities:
+                summary = driver.execute_query(
+                "MERGE (:city {name: $name})",  
+                name=city,  
+                database_="neo4j",  
+                ).summary
+
+
+    def school_filter(self):
+        unique_schools = []
+        for target in data_list:
+        
+            education_raw = target.education
+            if education_raw=="education":
+                pass
+            else:
+                #print(type(education_raw))
+            
+                try:
+                    for school in education_raw:
+                        if school[0] not in unique_schools:
+                            unique_schools.append(school[0])
+                except:
+                    pass
+        print(f"unique Schools: {len(unique_schools)}")
+        return unique_schools
+
+
+    def school_creater(self):
+        schools=self.school_filter()
+        for school in schools:
+            summary = driver.execute_query(
+            "MERGE (:School {name: $name})",  
+            name=school,  
+            database_="neo4j",  
+            ).summary
+        print("Created {nodes_created} nodes in {time} ms.".format(
+            nodes_created=summary.counters.nodes_created,
+            time=summary.result_available_after
+        ))
+        
+    
+    def experience_fiter(self):
+        unique_experiences = []
+        for target in data_list:
+            experiences=target.experiences
+            for experience in experiences:
+                if " · Full-time" in experience[1]:
+                    company= experience[1].replace(" · Full-time","")
+                elif " · Part-time" in experience[1]:
+                    company= experience[1].replace(" · Part-time","")
+                else:
+                    company= experience[1]
+
+                if company not in unique_experiences:
+                    unique_experiences.append(company)
+        print(f"unique experiences: {len(unique_experiences)}")
+        return unique_experiences
+
+
+    def experience_creater(self):
+        experineces=self.experience_fiter()
+        for expoerience in experineces:
+            summary = driver.execute_query(
+            "MERGE (:Company {name: $name})",  
+            name=expoerience,  
+            database_="neo4j",  
+            ).summary
+        print("Created {nodes_created} nodes in {time} ms.".format(
+            nodes_created=summary.counters.nodes_created,
+            time=summary.result_available_after
+        ))
+
+ned = NodeBreeder()
 class Database_matchmaker:
     def location_matcher(person:Target):
         location = person.location.split(",")
@@ -164,8 +261,8 @@ class Database_matchmaker:
             )
     
     def city_matchmaker():
-        location_filter()
-        for city in cities_provinces: 
+        ned.location_filter()
+        for city in ned.cities_provinces: 
             records, summary, keys = driver.execute_query("""
             MATCH (c:city {name: $city}),(p:Province {name: $province})
             MERGE (c)-[:in]->(p)
@@ -176,8 +273,8 @@ class Database_matchmaker:
 
 
     def country_matchmaker():
-        location_filter()
-        for city in cities_provinces: 
+        ned.location_filter()
+        for city in ned.cities_provinces: 
             records, summary, keys = driver.execute_query("""
             MATCH (c:Province {name: $Province}),(p:Country{name:"Finland"})
             MERGE (c)-[:in]->(p)
@@ -200,6 +297,8 @@ class Database_matchmaker:
         for experience in experiences:
             if " · Full-time" in experience[1]:
                 company= experience[1].replace(" · Full-time","")
+            elif " · Part-time" in experience[1]:
+                company= experience[1].replace(" · Part-time","")
             else:
                 company= experience[1]
             
@@ -232,7 +331,7 @@ class Database_deleter:
 
 
     def delete_all_cities():
-        for city in cities:
+        for city in ned.cities:
             records, summary, keys = driver.execute_query("""
             MATCH (p:city {name: $name})
             DETACH DELETE p
@@ -243,7 +342,7 @@ class Database_deleter:
 
 
     def delete_all_provinces():
-        for province in provinces:
+        for province in ned.provinces:
             records, summary, keys = driver.execute_query("""
             MATCH (p:Province {name: $name})
             DETACH DELETE p
@@ -253,7 +352,7 @@ class Database_deleter:
         print(f"Query counters: {summary.counters}.")
 
     def delete_all_schools():
-        schools=school_filter()
+        schools=ned.school_filter()
         for school in schools:
             records, summary, keys = driver.execute_query("""
             MATCH (p:School {name: $name})
@@ -262,6 +361,19 @@ class Database_deleter:
             database_="neo4j",
             )
         print(f"Query counters: {summary.counters}.")
+
+    def delete_all_companies():
+        companies=ned.experience_fiter()
+        for company in companies:
+            records, summary, keys = driver.execute_query("""
+            MATCH (p:Company {name: $name})
+            DETACH DELETE p
+            """, name=company,
+            database_="neo4j",
+            )
+        print(f"Query counters: {summary.counters}.")
+
+    
 
     
 
@@ -280,118 +392,30 @@ def csv_reader():
 
 csv_reader()
 
-#for user in data_list:
-    #print(user.location)
-# URI examples: "neo4j://localhost", "neo4j+s://xxx.databases.neo4j.io"
-
-cities=[]
-provinces=[]
-cities_provinces=[]
-
-def location_filter():
-    for user in data_list:
-        location = user.location.split(",")
-        if len(location)==3 and location[0] not in cities:
-            if location[1] not in provinces:
-                provinces.append(location[1])
-            cities.append(location[0])
-            cities_provinces.append((location[0],location[1]))
 
 
-def location_creater():
-    for provice in provinces:
-            summary = driver.execute_query(
-            "MERGE (:Province {name: $name})",  
-            name=provice,  
-            database_="neo4j",  
-            ).summary
-            
-    for city in cities:
-            summary = driver.execute_query(
-            "MERGE (:city {name: $name})",  
-            name=city,  
-            database_="neo4j",  
-            ).summary
 
 
-def school_filter():
-    unique_schools = []
-    for target in data_list:
-        
-        education_raw = target.education
-        if education_raw=="education":
-            pass
-        else:
-            #print(type(education_raw))
-            
-            try:
-                for school in education_raw:
-                    if school[0] not in unique_schools:
-                        unique_schools.append(school[0])
-            except:
-                pass
-    return unique_schools
-
-
-def school_creater():
-    schools=school_filter()
-    for school in schools:
-        summary = driver.execute_query(
-        "MERGE (:School {name: $name})",  
-        name=school,  
-        database_="neo4j",  
-        ).summary
-    print("Created {nodes_created} nodes in {time} ms.".format(
-        nodes_created=summary.counters.nodes_created,
-        time=summary.result_available_after
-    ))
-        
+if __name__ == "__main__":
     
-def experience_fiter():
-    unique_experiences = []
-    for target in data_list:
-        experiences=target.experiences
-        for experience in experiences:
-            if " · Full-time" in experience[1]:
-                company= experience[1].replace(" · Full-time","")
-            else:
-                company= experience[1]
-
-            if company not in unique_experiences:
-                unique_experiences.append(company)
-    return unique_experiences
+    ned.experience_creater()
+    delter = Database_deleter
+    ned.school_creater()
+    ned.location_creater()
+    #city_matchmaker()  
+    #country_matchmaker()
+    delter.delete_all_users()
 
 
-def experience_creater():
-    experineces=experience_fiter()
-    for expoerience in experineces:
-        summary = driver.execute_query(
-        "MERGE (:Company {name: $name})",  
-        name=expoerience,  
-        database_="neo4j",  
-        ).summary
-    print("Created {nodes_created} nodes in {time} ms.".format(
-        nodes_created=summary.counters.nodes_created,
-        time=summary.result_available_after
-    ))
-
-
-#experience_creater()
-delter = Database_deleter
-#school_creater()
-#location_creater()
-#city_matchmaker()
-#country_matchmaker()
-#delter.delete_all_users()
-
-database = Database_updater()
-
-for person in data_list:
-    database.update_all(person=person)
-    #print(person.intro)
-    Database_matchmaker.location_matcher(person)
-    Database_matchmaker.education_matchmaker(person)
-    Database_matchmaker.experience_matchmaker(person)
+    database = Database_updater()
+    #database.input_users()
+    for person in data_list:
+        database.update_all(person=person)
+        #print(person.intro)
+        Database_matchmaker.location_matcher(person)
+        Database_matchmaker.education_matchmaker(person)
+        Database_matchmaker.experience_matchmaker(person)
     
-epimetheus_adv_matcher.buddies()
+    #epimetheus_adv_matcher.school_buddies()
+    #epimetheus_adv_matcher.company_buddies()
 
